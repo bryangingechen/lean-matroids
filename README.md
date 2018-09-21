@@ -2,7 +2,7 @@
 
 A formalization of [matroids](https://en.wikipedia.org/wiki/Matroid) in [Lean](https://leanprover.github.io), so far following the (beginning of the) first chapter of the eponymous book of James Oxley. These files depend on and are inspired by the lean [mathlib](https://github.com/leanprover/mathlib), and maybe someday some of this will make it in there as well.
 
-Currently [`matroids.lean`](src/matroids.lean) contains:
+Currently [`matroids.lean`](src/matroid.lean) contains:
 * structures implementing the following formulations of matroids:
   * independent sets
   * circuits
@@ -15,7 +15,7 @@ Another file [`matroidexamples.lean`](src/matroidexamples.lean) contains:
   * the loopy matroid (all subsets dependent)
   * the free matroid (all subsets independent)
   * the uniform matroid
-* various explicit computations involving the basis and circuit lemmas and functions defined in [`matroids.lean`].
+* various explicit example computations involving the basis and circuit lemmas and functions defined in [`matroid.lean`](src/matroid.lean).
 
 ### Acknowledgements
 
