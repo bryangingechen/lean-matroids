@@ -1,7 +1,7 @@
 /-
 Matroids, after Chapter 1 of Oxley, Matroid Theory, 1992.
 -/
-import data.finset tactic.wlog data.equiv.list --tactic.find
+import data.finset tactic.wlog data.equiv.list tactic.find
 
 variables {α : Type*} {β : Type*} [decidable_eq α]
 
@@ -12,6 +12,9 @@ by simp [ext]; exact λ a, iff.intro (λ H, H.1) (λ H, ⟨H, mem_of_subset h H�
 
 lemma subset_iff_sdiff_eq_empty {x y : finset α} : x ⊆ y ↔ x \ y = ∅ :=
 by simp [sdiff_eq_filter, eq_empty_iff_forall_not_mem, subset_iff]
+
+lemma inter_subset_inter_of_subset {x y : finset α} (h₁ : x ⊆ y) (z : finset α) : x ∩ z ⊆ y ∩ z :=
+by simp [subset_iff]; exact λ a h₂ h₃, ⟨h₁ h₂, h₃⟩
 
 lemma empty_sdiff (E : finset α): E \ ∅ = E :=
 by simp [ext]
@@ -57,29 +60,29 @@ by_contradiction $ λ H, not_le_of_lt hcard $ card_le_of_subset $ by simpa using
 /- proof by chris hughes
 https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/subject/maximal.20finset.20in.20finset.20of.20finsets/near/133905271 -/
 lemma max_fun_of_ne_empty {F : finset β} (func : β → ℕ) (h : F ≠ ∅) :
-∃ x ∈ F, ∀ g ∈ F, func g ≤ func x :=
+  ∃ x ∈ F, ∀ g ∈ F, func g ≤ func x :=
 let ⟨n, hn⟩ := (max_of_ne_empty (mt image_eq_empty.1 h) : ∃ a, a ∈ finset.max (F.image func)) in
 let ⟨x, hx₁, hx₂⟩ := mem_image.1 (mem_of_max hn) in
   ⟨x, hx₁, hx₂.symm ▸ λ g hg, le_max_of_mem (mem_image.2 ⟨g, hg, rfl⟩) hn⟩
 
 lemma min_fun_of_ne_empty {F : finset β} (func : β → ℕ) (h : F ≠ ∅) :
-∃ x ∈ F, ∀ g ∈ F, func x ≤ func g :=
+  ∃ x ∈ F, ∀ g ∈ F, func x ≤ func g :=
 let ⟨n, hn⟩ := (min_of_ne_empty $ mt image_eq_empty.1 h : ∃ a, a ∈ finset.min (F.image func)) in
 let ⟨x, hx₁, hx₂⟩ := mem_image.1 (mem_of_min hn) in
   ⟨x, hx₁, hx₂.symm ▸ λ g hg, le_min_of_mem (mem_image.2 ⟨g, hg, rfl⟩) hn⟩
 
 section inst
 
-variables {F : finset α} {P : α → Prop} [decidable_pred P]
+variables {F : finset α} {Q : finset α → Prop} [decidable_pred Q] {P : α → Prop} [decidable_pred P]
 
-instance decidable_not_forall (c₁ : finset (finset α)) (c : finset α) : decidable (∃ x : finset α, ¬(x ∈ c₁ → ¬x ⊆ c)) :=
-decidable_of_iff (∃ x ∈ c₁, x ⊆ c) $ by simp
+instance decidable_not_forall (c₁ : finset (finset α)) :
+  decidable (∃ x : finset α, ¬(x ∈ c₁ → ¬Q x)) :=
+decidable_of_iff (∃ x ∈ c₁, Q x) $ by simp
 
 instance decidable_exists_and_mem : decidable (∃ e, e ∈ F ∧ P e) :=
 decidable_of_iff (∃ e ∈ F, P e) $ by simp
 
 end inst
-
 
 end finset
 
@@ -109,7 +112,8 @@ instance indep_repr [has_repr α] (E : finset α) : has_repr (indep E) :=
 ⟨λ m, has_repr.repr m.indep⟩
 
 theorem eq_of_indep_eq : ∀ {M₁ M₂ : indep E}, M₁.1 = M₂.1 → M₁ = M₂
-| ⟨I₁, p₁, q₁, r₁, s₁⟩ ⟨I₂, p₂, q₂, r₂, s₂⟩ h := by simpa
+  | ⟨I₁, p₁, q₁, r₁, s₁⟩ ⟨I₂, p₂, q₂, r₂, s₂⟩ h :=
+by simpa
 
 /-- A circuit of a matroid is a minimal dependent subset of the ground set -/
 def is_circuit (x : finset α) (m : indep E) : Prop :=
@@ -126,7 +130,7 @@ begin
 end
 
 instance decidable_circuit_subset (x : finset α) (m : indep E) :
-    decidable (∃ (y : finset α) (H : y ⊆ x), is_circuit y m) :=
+  decidable (∃ (y : finset α) (H : y ⊆ x), is_circuit y m) :=
 decidable_of_iff (∃ (y : finset α) (H : y ∈ powerset x), is_circuit y m) $ by simp
 
 /- should I make this definition reducible? I don't know when to use attributes... -/
@@ -134,7 +138,7 @@ def circuits_circ_of_indep (m : indep E) : finset (finset α) :=
 (powerset E).filter (λ S, is_circuit S m)
 
 lemma C2_of_indep (m : indep E) (x y : finset α) (hx : x ∈ circuits_circ_of_indep m)
-    (hy : y ∈ circuits_circ_of_indep m) (hxy : x ⊆ y) : x = y :=
+  (hy : y ∈ circuits_circ_of_indep m) (hxy : x ⊆ y) : x = y :=
 begin
   simp [circuits_circ_of_indep, is_circuit] at *,
   have hnxy : ¬x ⊂ y := λ h, hx.2.1 $ hy.2.2 x h,
@@ -143,7 +147,7 @@ begin
 end
 
 theorem dep_iff_circuit_subset {x : finset α} (m : indep E) :
-    x ⊆ E → (x ∉ m.indep ↔ ∃ y ⊆ x, is_circuit y m) :=
+  x ⊆ E → (x ∉ m.indep ↔ ∃ y ⊆ x, is_circuit y m) :=
 λ hxE, iff.intro (λ hxd, exists.elim (min_fun_of_ne_empty card (ne_empty_of_mem $
     mem_filter.mpr ⟨mem_powerset.mpr $ subset.refl x, hxd⟩)) $
   λ a ha, exists.elim ha $
@@ -158,8 +162,8 @@ theorem dep_iff_circuit_subset {x : finset α} (m : indep E) :
 
 /-- Lemma 1.1.3 -/
 lemma C3_of_indep (m : indep E) (x y : finset α) (e : α) (hx : x ∈ circuits_circ_of_indep m)
-    (hy : y ∈ circuits_circ_of_indep m) (hxny : x ≠ y) (he : e ∈ x ∩ y) :
-    ∃ z, z ∈ circuits_circ_of_indep m ∧ z ⊆ erase (x ∪ y) e :=
+  (hy : y ∈ circuits_circ_of_indep m) (hxny : x ≠ y) (he : e ∈ x ∩ y) :
+  ∃ z, z ∈ circuits_circ_of_indep m ∧ z ⊆ erase (x ∪ y) e :=
 have hxmy : x \ y ≠ ∅ := mt subset_iff_sdiff_eq_empty.mpr $ mt (C2_of_indep m x y hx hy) hxny,
   exists.elim (exists_mem_of_ne_empty hxmy) $
     by { clear hxny hxmy,
@@ -239,7 +243,8 @@ instance circuits_repr [has_repr α] (E : finset α) : has_repr (circuits E) :=
 ⟨λ c, has_repr.repr c.circuits⟩
 
 theorem eq_of_circ_eq : ∀ {C₁ C₂ : circuits E}, C₁.1 = C₂.1 → C₁ = C₂
-| ⟨c₁, p₁, q₁, r₁, s₁⟩ ⟨c₂, p₂, q₂, r₂, s₂⟩ h := by simpa
+  | ⟨c₁, p₁, q₁, r₁, s₁⟩ ⟨c₂, p₂, q₂, r₂, s₂⟩ h :=
+by simpa
 
 def circuits_of_indep (m : indep E) : circuits E :=
 ⟨circuits_circ_of_indep m,
@@ -254,15 +259,14 @@ def indep_indep_of_circuits (C : circuits E) : finset (finset α) :=
 
 /-- first part of Theorem 1.1.4 -/
 lemma I2_of_circuits (C : circuits E) (x y : finset α) : x ∈ indep_indep_of_circuits C → y ⊆ x →
-    y ∈ indep_indep_of_circuits C :=
+  y ∈ indep_indep_of_circuits C :=
 by unfold indep_indep_of_circuits at *; simp at *;
   exact λ hxE hx hxy, ⟨subset.trans hxy hxE, λ c hc H, hx c hc $ subset.trans H hxy⟩
 
 /-- second part of Theorem 1.1.4 -/
 lemma I3_of_circuits (C : circuits E) (x y : finset α) (hx : x ∈ indep_indep_of_circuits C)
-    (hy : y ∈ indep_indep_of_circuits C) (hcardxy : card x < card y)
---    : ∃ e ∈ y \ x, insert e x ∈ indep_indep_of_circuits C :=
-    : ∃ e, e ∈ y \ x ∧ insert e x ∈ indep_indep_of_circuits C :=
+  (hy : y ∈ indep_indep_of_circuits C) (hcardxy : card x < card y)
+  : ∃ e, e ∈ y \ x ∧ insert e x ∈ indep_indep_of_circuits C :=
 begin
   unfold indep_indep_of_circuits at *, simp at hx hy,
   by_contra h, simp at h,
@@ -402,7 +406,7 @@ instance indep_circ : has_coe (indep E) (circuits E) := ⟨circuits_of_indep⟩
 
 /-- third part of Theorem 1.1.4 -/
 theorem circ_indep_circ : ∀ C : circuits E, C = circuits_of_indep (indep_of_circuits C)
-| ⟨c₁, p₁, q₁, r₁, s₁⟩ :=
+  | ⟨c₁, p₁, q₁, r₁, s₁⟩ :=
 by simp [indep_of_circuits, circuits_of_indep, indep_indep_of_circuits, circuits_circ_of_indep, is_circuit, ext];
 exact λ c, iff.intro
   (λ hc : c ∈ c₁, have ce : c ⊆ E := mem_powerset.mp (mem_of_subset p₁ hc),
@@ -431,10 +435,8 @@ begin
 end
 
 /-- Proposition 1.1.6 -/
--- ∃! c ∈ circuits_circ_of_indep m, c ⊆ insert e I ∧ e ∈ c unfortunately doesn't work well
 theorem existsu_circuit_of_dep_of_insert_indep {I : finset α} {e : α} {m : indep E}
   (hI : I ∈ m.indep) (he : e ∈ E) (hIe : insert e I ∉ m.indep) :
---  ∃ c ∈ circuits_circ_of_indep m, c ⊆ insert e I ∧ e ∈ c ∧
   ∃ c, c ∈ circuits_circ_of_indep m ∧ c ⊆ insert e I ∧ e ∈ c ∧
   ∀ c' ∈ circuits_circ_of_indep m, c' ⊆ insert e I ∧ e ∈ c → c' = c :=
 by simp [circuits_circ_of_indep];
@@ -469,20 +471,17 @@ section encodable
 variable [encodable α]
 
 def circuit_of_dep_of_insert_indep {I : finset α} {e : α} {m : indep E}
-    (hI : I ∈ m.indep) (he : e ∈ E) (hIe : insert e I ∉ m.indep) : finset α :=
+  (hI : I ∈ m.indep) (he : e ∈ E) (hIe : insert e I ∉ m.indep) : finset α :=
 encodable.choose (existsu_circuit_of_dep_of_insert_indep hI he hIe)
 
 local notation `cdii` := circuit_of_dep_of_insert_indep
 
 def circuit_of_dep_of_insert_indep_spec {I : finset α} {e : α} {m : indep E}
   (hI : I ∈ m.indep) (he : e ∈ E) (hIe : insert e I ∉ m.indep) :
---  ∃ (H : cdii hI he hIe ∈ circuits_circ_of_indep m), cdii hI he hIe ⊆ insert e I ∧
   cdii hI he hIe ∈ circuits_circ_of_indep m ∧ cdii hI he hIe ⊆ insert e I ∧
   e ∈ cdii hI he hIe ∧ ∀ (c' : finset α), c' ∈ circuits_circ_of_indep m →
   c' ⊆ insert e I ∧ e ∈ cdii hI he hIe → c' = cdii hI he hIe  :=
-  encodable.choose_spec (existsu_circuit_of_dep_of_insert_indep hI he hIe)
---have aa : _ := encodable.choose_spec (exists_circuit_of_dep_of_insert_indep hI he hIe),
---exists.elim aa (λ a ha, ⟨a, ha⟩)
+encodable.choose_spec (existsu_circuit_of_dep_of_insert_indep hI he hIe)
 
 end encodable
 
@@ -496,7 +495,7 @@ decidable_of_iff (x ∈ m.indep ∧ (∀ y ∈ powerset E, x ⊂ y → y ∉ m.i
 
 /-- Lemma 1.2.1 -/
 theorem bases_of_indep_card_eq {x y : finset α} {m : indep E} : is_basis x m → is_basis y m →
-card x = card y :=
+  card x = card y :=
 begin
   intros hx hy,
   by_contra heq,
@@ -538,9 +537,13 @@ encodable.choose_spec $ exists_basis_containing_indep h
 end encodable
 
 theorem dep_of_card_gt_card_basis {x B : finset α} {m : indep E} (hB : is_basis B m)
-    (hcard : card B < card x) : x ∉ m.indep :=
+  (hcard : card B < card x) : x ∉ m.indep :=
 λ hxI, exists.elim (exists_basis_containing_indep hxI) $ λ B' hB',
   ne_of_lt (lt_of_lt_of_le hcard $ card_le_of_subset hB'.1) $ bases_of_indep_card_eq hB hB'.2
+
+theorem card_of_indep_le_card_basis {x B : finset α} {m : indep E} (hx : x ∈ m.indep)
+  (hB : is_basis B m) : card x ≤ card B :=
+by by_contra h; exact dep_of_card_gt_card_basis hB (lt_of_not_ge h) hx
 
 structure bases (E : finset α) :=
 (bases : finset (finset α))
@@ -556,7 +559,7 @@ instance bases_repr [has_repr α] (E : finset α) : has_repr (bases E) :=
 ⟨λ b, has_repr.repr b.bases⟩
 
 theorem eq_of_base_eq : ∀ {B₁ B₂ : bases E}, B₁.1 = B₂.1 → B₁ = B₂
-| ⟨b₁, p₁, q₁, r₁⟩ ⟨b₂, p₂, q₂, r₂⟩ h :=
+  | ⟨b₁, p₁, q₁, r₁⟩ ⟨b₂, p₂, q₂, r₂⟩ h :=
 by simpa
 
 def bases_bases_of_indep (m : indep E) : finset (finset α) :=
@@ -602,7 +605,7 @@ B2_of_indep m⟩
 
 /-- Lemma 1.2.4 -/
 theorem bases_card_eq {x y : finset α} {b : bases E} (hx : x ∈ b.bases) (hy : y ∈ b.bases) :
-card x = card y :=
+  card x = card y :=
 begin
   by_contra heq,
   wlog h : card y < card x using [x y, y x],
@@ -799,21 +802,29 @@ restriction m $ (empty_sdiff E).subst $ sdiff_subset_sdiff (subset.refl E) $ emp
 notation m `¦` hxe := restriction m hxe
 notation m `\` hxe := deletion m hxe
 
-lemma indep_restriction_trans {X Y : finset α} (hXY : X ⊆ Y) (hYE : Y ⊆ E) (m : indep E) :
-(m ¦ (subset.trans hXY hYE)).indep ⊆ (m ¦ hYE).indep :=
-by simp [restriction, indep_of_restriction, subset_iff];
-exact λ X' hX'I H, ⟨hX'I, λ x hx, mem_of_subset hXY $ H hx⟩
+lemma restriction_subset_restriction {X : finset α} (hX : X ⊆ E) (m : indep E) :
+  (m ¦ hX).indep ⊆ m.indep :=
+by simp [restriction, indep_of_restriction, subset_iff]; exact λ _ hX'I _, hX'I
 
-def spans (X : finset α) {Y : finset α} (hY : Y ⊆ E) (m : indep E) : Prop :=
-X ∈ bases_bases_of_indep (m ¦ hY)
+lemma restriction_trans {X Y : finset α} (hXY : X ⊆ Y) (hY : Y ⊆ E) (m : indep E) :
+  (m ¦ subset.trans hXY hY) = ((m ¦ hY) ¦ hXY) :=
+by simp [restriction, indep_of_restriction, ext];
+exact λ I, iff.intro (λ h, ⟨⟨h.1, subset.trans h.2 hXY⟩, h.2⟩) $ λ h, ⟨h.1.1, h.2⟩
+
+lemma subset_restriction_indep {X Y : finset α} {m : indep E} (hX : X ∈ m.indep) (hXY : X ⊆ Y)
+  (hY : Y ⊆ E) : X ∈ (m ¦ hY).indep :=
+by simp [restriction, indep_of_restriction]; exact ⟨hX, hXY⟩
+
+/-def spans (X : finset α) {Y : finset α} (hY : Y ⊆ E) (m : indep E) : Prop :=
+X ∈ bases_bases_of_indep (m ¦ hY)-/
 
 lemma exists_basis_of_subset {X : finset α} (hXE : X ⊆ E) (m : indep E) :
   ∃ B, B ∈ bases_bases_of_indep (m ¦ hXE) :=
-exists_mem_of_ne_empty (bases_of_indep (m ¦ hXE)).bases_not_empty
+exists_mem_of_ne_empty $ B1_of_indep (m ¦ hXE)
 
-lemma inter_of_span_of_subset_span {m : indep E} {X Y bX bY : finset α} {hXE : X ⊆ E}
+/-lemma inter_of_span_of_subset_span {m : indep E} {X Y bX bY : finset α} {hXE : X ⊆ E}
   (hbX : spans bX hXE m) {hYE : Y ⊆ E} (hbY : spans bY hYE m) (hbXbY : bX ⊆ bY) : bY ∩ X = bX :=
-sorry
+sorry-/
 
 section encodable
 variable [encodable α]
@@ -822,7 +833,7 @@ def basis_of_subset {X : finset α} (hXE : X ⊆ E) (m : indep E) : finset α :=
 encodable.choose $ exists_basis_of_subset hXE m
 
 def basis_of_subset_spec {X : finset α} (hXE : X ⊆ E) (m : indep E) :
-basis_of_subset hXE m ∈ (bases_of_indep (m ¦ hXE)).bases :=
+  basis_of_subset hXE m ∈ bases_bases_of_indep (m ¦ hXE) :=
 encodable.choose_spec $ exists_basis_of_subset hXE m
 
 notation `𝔹` := basis_of_subset
@@ -831,55 +842,127 @@ notation `𝔹ₛ` := basis_of_subset_spec
 def rank_of_subset {X : finset α} (hXE : X ⊆ E) (m : indep E) : ℕ :=
 card $ 𝔹 hXE m
 
-notation `𝔯` := rank_of_subset
+notation `𝓇` := rank_of_subset
+
+lemma R2_of_indep (m : indep E) {X Y : finset α} (hXY : X ⊆ Y) (hYE : Y ⊆ E) :
+  𝓇 (subset.trans hXY hYE) m ≤ 𝓇 hYE m :=
+let hXE : X ⊆ E := subset.trans hXY hYE in let bX := 𝔹 hXE m in let bY := 𝔹 hYE m in
+have bXs : _ := 𝔹ₛ hXE m, have bYs : _ := 𝔹ₛ hYE m,
+by simp [bases_bases_of_indep] at bXs bYs; unfold rank_of_subset;
+have hBX : bX ∈ (m ¦ hYE).indep := mem_of_subset (restriction_subset_restriction hXY (m ¦ hYE))
+  ((restriction_trans hXY hYE m) ▸ bXs.2.1);
+exact exists.elim (exists_basis_containing_indep hBX) (λ B hB, calc
+  card bX ≤ card B : card_le_of_subset hB.1
+  ... = card bY : bases_of_indep_card_eq hB.2 bYs.2)
 
 /-- Lemma 1.3.1 -/
 lemma R3_of_indep (m : indep E) {X Y : finset α} (hX : X ⊆ E) (hY : Y ⊆ E) :
-  𝔯 (union_subset hX hY) m +
-  𝔯 (subset.trans (@inter_subset_left _ _ X Y) hX) m ≤
-  𝔯 hX m + 𝔯 hY m :=
+  𝓇 (union_subset hX hY) m +
+  𝓇 (subset.trans (@inter_subset_left _ _ X Y) hX) m ≤
+  𝓇 hX m + 𝓇 hY m :=
 begin
-  let hXuY := union_subset hX hY, let hXiY := subset.trans (@inter_subset_left _ _ X Y) hX,
+  have hXXuY : X ⊆ X ∪ Y := @subset_union_left _ _ X Y,
+  have hYXuY : Y ⊆ X ∪ Y := @subset_union_right _ _ X Y,
+  have hXiYX : X ∩ Y ⊆ X := @inter_subset_left _ _ X Y,
+  have hXuY : X ∪ Y ⊆ E := union_subset hX hY,
+  have hXiY : X ∩ Y ⊆ E := subset.trans hXiYX hX,
   let bXuY := 𝔹 hXuY m, let bXiY := 𝔹 hXiY m,
-  let bX := 𝔹 hX m, let rY := 𝔹 hY m,
+  let bX := 𝔹 hX m, let bY := 𝔹 hY m,
   unfold rank_of_subset,
   have bXuYs := 𝔹ₛ hXuY m, have bXiYs := 𝔹ₛ hXiY m,
-  simp [bases_of_indep, bases_bases_of_indep, is_basis] at bXiYs,
   have bXs := 𝔹ₛ hX m, have bYs := 𝔹ₛ hY m,
-  have hcu : X ∩ Y ⊆ X ∪ Y := subset.trans (@inter_subset_left _ _ X Y)
-    (@subset_union_left _ _ X Y),
-  have hbXiY : bXiY ∈ (m ¦ hXuY).indep := mem_of_subset (indep_restriction_trans hcu hXuY m)
-    bXiYs.2.1,
+  simp [bases_bases_of_indep] at bXuYs bXiYs bXs bYs,
+  have rXiY : 𝓇 hXiY m = card bXiY := by simp [rank_of_subset],
+  have hiu : X ∩ Y ⊆ X ∪ Y := subset.trans hXiYX hXXuY,
+  have hbXiY : bXiY ∈ (m ¦ hXuY).indep := mem_of_subset
+    (restriction_subset_restriction hiu (m ¦ hXuY)) ((restriction_trans hiu hXuY m) ▸ bXiYs.2.1),
   have HbbXiY := exists_basis_containing_indep hbXiY,
-  exact exists.elim HbbXiY (by {
-    intros B hB, unfold is_basis at hB,
-    have hBXuY : B ⊆ X ∪ Y := mem_powerset.mp ((m¦hXuY).indep_subset_powerset_ground hB.2.1),
-    have hBX : B ∩ X ∈ (m ¦ hX).indep := sorry,
-    have hBX : B ∩ Y ∈ (m ¦ hY).indep := sorry,
-    have hBXr : card (B ∩ X) ≤ 𝔯 hX m := sorry,
-    have hBYr : card (B ∩ Y) ≤ 𝔯 hY m := sorry,
+  exact exists.elim HbbXiY (by { intros B hB,
+    have rXuY : 𝓇 hXuY m = card B := by simp [rank_of_subset];
+      exact bases_of_indep_card_eq bXuYs.2 hB.2,
+    have hBXuY : B ⊆ X ∪ Y := mem_powerset.mp ((m ¦ hXuY).indep_subset_powerset_ground hB.2.1),
+    have hBX : B ∩ X ∈ (m ¦ hX).indep := have hsub : _ := restriction_trans hXXuY hXuY m,
+      have hBX : _ := ((m ¦ hXuY).indep_of_subset_indep hB.2.1 $ @inter_subset_left _ _ B X),
+      hsub.symm ▸ (subset_restriction_indep hBX (@inter_subset_right _ _ B X) hXXuY),
+    have hBY : B ∩ Y ∈ (m ¦ hY).indep := have hsub : _ := restriction_trans hYXuY hXuY m,
+      have hBY : _ := ((m ¦ hXuY).indep_of_subset_indep hB.2.1 $ @inter_subset_left _ _ B Y),
+      hsub.symm ▸ (subset_restriction_indep hBY (@inter_subset_right _ _ B Y) hYXuY),
+    have hBXr : card (B ∩ X) ≤ 𝓇 hX m := by unfold rank_of_subset;
+      exact card_of_indep_le_card_basis hBX bXs.2,
+    have hBYr : card (B ∩ Y) ≤ 𝓇 hY m := by unfold rank_of_subset;
+      exact card_of_indep_le_card_basis hBY bYs.2,
     have hinter : (B ∩ X) ∩ (B ∩ Y) = B ∩ X ∩ Y := by simp,
-    have hBiY : B ∩ X ∩ Y = bXiY := by {
-      sorry
-    },
-    have := calc
-    𝔯 hX m + 𝔯 hY m ≥ card (B ∩ X) + card (B ∩ Y) : add_le_add hBXr hBYr
+    have hBXiY : B ∩ X ∩ Y = bXiY :=
+      by { have hsub : B ∩ X ∩ Y ⊆ bXiY :=
+        by { by_contra h,
+        exact exists.elim (exists_mem_of_ne_empty $ (mt subset_iff_sdiff_eq_empty.mpr) h)
+          (by { intros a ha, rw [mem_sdiff, inter_assoc, mem_inter] at ha, unfold is_basis at bXiYs,
+          have := ssubset_insert ha.2,
+          have hbXiYsubXiY : insert a bXiY ⊆ X ∩ Y:= insert_subset.mpr ⟨ha.1.2, bXiYs.1⟩,
+          have hrestrict : (m ¦ hXiY) = (m ¦ hXuY ¦ hiu) := restriction_trans hiu hXuY m,
+          have hindep : insert a bXiY ∈ (m ¦ hXiY).indep := hrestrict.symm ▸
+            (subset_restriction_indep ((m ¦ hXuY).indep_of_subset_indep hB.2.1
+            $ insert_subset.mpr ⟨ha.1.1, hB.1⟩) hbXiYsubXiY hiu),
+          exact bXiYs.2.2 (insert a bXiY) hbXiYsubXiY this hindep }) },
+      have hsuper : bXiY ⊆ B ∩ X ∩ Y :=
+        by { rw [inter_assoc],
+        have := inter_subset_inter_of_subset hB.1 (X ∩ Y),
+        have h : bXiY ∩ (X ∩ Y) = bXiY := inter_of_subset bXiYs.1,
+        exact h ▸ this },
+      exact subset.antisymm hsub hsuper },
+    exact calc 𝓇 hX m + 𝓇 hY m ≥ card (B ∩ X) + card (B ∩ Y) : add_le_add hBXr hBYr
     ... = card ((B ∩ X) ∪ (B ∩ Y)) + card ((B ∩ X) ∩ (B ∩ Y)) : card_union_inter (B ∩ X) (B ∩ Y)
     ... = card (B ∩ (X ∪ Y)) + card (B ∩ X ∩ Y) : by rw [←inter_distrib_left, hinter]
-    ... = card B + card (B ∩ X ∩ Y) : by rw [inter_of_subset hBXuY],
-    sorry
-  })
+    ... = card B + card bXiY : by rw [inter_of_subset hBXuY, hBXiY]
+    ... = 𝓇 hXuY m + 𝓇 hXiY m : by rw [rXuY, rXiY] })
 end
 
 end encodable
 
 structure rank (ground : finset α) :=
-(r : finset α → ℕ)
+(r {X : finset α} (hX : X ⊆ ground) : ℕ)
 -- (R1)
-(bounded {X : finset α} : X ⊆ ground → 0 ≤ r X ∧ r X ≤ card X)
+(bounded {X : finset α} (hX : X ⊆ ground) : 0 ≤ r hX ∧ r hX ≤ card X)
 -- (R2)
-(order_preserving {X Y : finset α} : X ⊆ Y → Y ⊆ ground → r X ≤ r Y)
+(order_preserving {X Y : finset α} (hXY : X ⊆ Y) (hY : Y ⊆ ground) : r (subset.trans hXY hY) ≤ r hY)
 -- (R3)
-(submodular {X Y : finset α} : X ⊆ ground → Y ⊆ ground → r (X ∪ Y) + r (X ∩ Y) ≤ r X + r Y)
+(submodular {X Y : finset α} (hX : X ⊆ ground) (hY : Y ⊆ ground) :
+r (union_subset hX hY) + r (subset.trans (@inter_subset_left _ _ X Y) hX) ≤ r hX + r hY)
+
+section encodable
+variable [encodable α]
+
+def rank_of_indep (m : indep E) : rank E :=
+⟨λ X hX, rank_of_subset hX m,
+λ X hX, ⟨dec_trivial, (by { have := basis_of_subset_spec hX m, simp [bases_bases_of_indep] at this,
+  exact card_le_of_subset this.1 })⟩,
+λ X Y hXY hY, R2_of_indep m hXY hY,
+λ X Y hX hY, R3_of_indep m hX hY⟩
+
+end encodable
+
+structure rank_R2_R3 (ground : finset α) :=
+(r {X : finset α} (hX : X ⊆ ground) : ℕ)
+-- (R2)
+(order_preserving {X Y : finset α} (hXY : X ⊆ Y) (hY : Y ⊆ ground) : r (subset.trans hXY hY) ≤ r hY)
+-- (R3)
+(submodular {X Y : finset α} (hX : X ⊆ ground) (hY : Y ⊆ ground) :
+r (union_subset hX hY) + r (subset.trans (@inter_subset_left _ _ X Y) hX) ≤ r hX + r hY)
+
+-- Lemma 1.3.3
+lemma rank_union_lemma (rk : rank_R2_R3 E) {X Y : finset α} (hX : X ⊆ E) (hY : Y ⊆ E)
+  (hy : ∀ y, ∀ (h : y ∈ Y \ X), rk.r (by { simp at h,
+    exact insert_subset.mpr ⟨(mem_of_subset hY h.1), hX⟩ }) = rk.r hX) :
+  rk.r (union_subset hX hY) = rk.r hX :=
+begin
+  sorry
+end
+
+def indep_of_rank (r : rank E) : indep E :=
+⟨sorry,
+sorry,
+sorry,
+sorry,
+sorry⟩
 
 end matroid
