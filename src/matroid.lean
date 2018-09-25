@@ -19,12 +19,14 @@ by simp [subset_iff]; exact λ a h₂ h₃, ⟨h₁ h₂, h₃⟩
 lemma empty_sdiff (E : finset α): E \ ∅ = E :=
 by simp [ext]
 
+lemma sdiff_subset (A B : finset α): A \ B ⊆ A := (empty_sdiff A).subst $ sdiff_subset_sdiff (subset.refl A) $ empty_subset B
+
 lemma sdiff_eq_sdiff_inter (A B : finset α) : A \ B = A \ (A ∩ B) :=
 by simp [ext]; exact λ a, iff.intro (λ h, ⟨h.1, λ x, h.2⟩) (λ h, ⟨h.1, h.2 h.1⟩)
 
-lemma union_eq_union_sdiff (A B : finset α) : A ∪ B = A ∪ B \ A :=
+lemma union_eq_union_sdiff (A B : finset α) : A ∪ B = A ∪ (B \ A) :=
 by simp [ext]; exact λ a, ⟨λ ha, or.elim ha (λ H, or.inl H)
-  (by { intro H, by_cases h : a ∈ A, exact or.inl h, exact or.inr ⟨H, h⟩ }),
+  (by { intro H, by_cases h : a ∈ A, { exact or.inl h }, { exact or.inr ⟨H, h⟩ } }),
   λ ha, or.elim ha (λ H, or.inl H) (λ H, or.inr H.1)⟩
 
 lemma card_eq_inter_sdiff (A B : finset α) : card A = card (A ∩ B) + card (A \ B) :=
@@ -33,8 +35,7 @@ begin
     exact λ a, iff.intro (λ ha, or.elim ha (λ H, H.1) (λ H, H.1))
       (by { intro ha, by_cases h : a ∈ B, { exact or.inl ⟨ha, h⟩ }, { exact or.inr ⟨ha, h⟩ } }),
   have : disjoint (A \ B) (A ∩ B) := by simp [disjoint],
-  replace this := card_disjoint_union this, rw [hA, add_comm] at this,
-  assumption
+  replace this := card_disjoint_union this, rwa [hA, add_comm] at this
 end
 
 lemma card_sdiff (A B : finset α) : card (A \ B) = card A - card (A ∩ B) :=
@@ -797,7 +798,7 @@ by unfold indep_of_restriction; exact λ x y hx hy hcard,
     ⟨e, H, mem_filter.mpr ⟨h₁, insert_subset.mpr ⟨mem_of_subset hyX (mem_sdiff.mp H).1, hxX⟩⟩⟩⟩
 
 def deletion (m : indep E) {X : finset α} (hXE : X ⊆ E) : indep (E \ X) :=
-restriction m $ (empty_sdiff E).subst $ sdiff_subset_sdiff (subset.refl E) $ empty_subset X
+restriction m $ sdiff_subset E X
 
 notation m `¦` hxe := restriction m hxe
 notation m `\` hxe := deletion m hxe
@@ -949,13 +950,53 @@ structure rank_R2_R3 (ground : finset α) :=
 (submodular {X Y : finset α} (hX : X ⊆ ground) (hY : Y ⊆ ground) :
 r (union_subset hX hY) + r (subset.trans (@inter_subset_left _ _ X Y) hX) ≤ r hX + r hY)
 
+lemma congr_for_rank (rk : rank_R2_R3 E ) {X Y : finset α} (hX : X ⊆ E) (hY : Y ⊆ E) (h : X = Y) :
+rk.r hX = rk.r hY :=
+by congr; exact h
+
 -- Lemma 1.3.3
 lemma rank_union_lemma (rk : rank_R2_R3 E) {X Y : finset α} (hX : X ⊆ E) (hY : Y ⊆ E)
   (hy : ∀ y, ∀ (h : y ∈ Y \ X), rk.r (by { simp at h,
-    exact insert_subset.mpr ⟨(mem_of_subset hY h.1), hX⟩ }) = rk.r hX) :
+    exact insert_subset.mpr ⟨mem_of_subset hY h.1, hX⟩ }) = rk.r hX) :
   rk.r (union_subset hX hY) = rk.r hX :=
 begin
-  sorry
+  have hXuY : X ∪ Y ⊆ E := union_subset hX hY,
+  induction h : (Y \ X) using finset.induction with a S ha ih generalizing X Y,
+  { congr, have H := congr_arg (λ x, X ∪ x) h, simp at H,
+    exact (union_eq_union_sdiff X Y).symm ▸ H },
+  { have h₁ : rk.r hX + rk.r hX ≥ rk.r hXuY + rk.r hX :=
+    by { have haa : a ∈ Y \ X := h.substr (mem_insert_self a S),
+    have haX : insert a X ⊆ E := insert_subset.mpr ⟨mem_of_subset hY (mem_sdiff.mp haa).1, hX⟩,
+    have hins : insert a S ⊆ E := h ▸ subset.trans (sdiff_subset Y X) hY,
+    have hS : S ⊆ E := subset.trans (subset_insert a S) hins,
+    have hXS : X ∪ S ⊆ E := union_subset hX hS,
+    have hrins : rk.r haX = rk.r hX := hy a haa, simp at haa,
+    have hrS : rk.r hXS = rk.r hX := by {
+      exact ih hX hS (by { intros y Hy, have : y ∈ Y \ X := by { simp at Hy,
+        simp [ext] at h, exact mem_sdiff.mpr ((h y).mpr $ or.inr Hy.1) }, exact hy y this })
+        hXS (by simp [ext] at h ⊢; exact λ y, iff.intro (λ Hy, Hy.1)
+        $ λ Hy, ⟨Hy, ((h y).mpr $ or.inr Hy).2⟩) },
+    have hXuSiaX : (X ∪ S) ∩ insert a X ⊆ E := (subset.trans (@inter_subset_right _ _ (X ∪ S)
+      (insert a X)) haX),
+    have hr₁ : rk.r (union_subset hXS haX) = rk.r hXuY :=
+      by { exact congr_for_rank rk (union_subset hXS haX) hXuY (by simp [ext] at h ⊢;
+      exact λ x, iff.intro (λ hx, or.elim hx (λ hxa, or.inr $ hxa.substr haa.1) $
+        λ H, or.elim H (by { intro hxS, exact or.inr ((h x).mpr $ or.inr hxS).1}) $
+          by {exact (λ hxX, or.inl hxX) }) $
+        λ hx, or.elim hx (by {intro hxX, exact or.inr (or.inr hxX)}) $
+          by { intro hxY, by_cases hxX : x ∈ X,
+            { exact or.inr (or.inr hxX) },
+            { exact or.elim ((h x).mp ⟨hxY, hxX⟩) (λ H, or.inl H)
+              (λ HS, or.inr $ or.inl HS) } }) },
+    have hr₂ : rk.r hXuSiaX = rk.r hX := by congr; simp [ext];
+      exact λ x, iff.intro (λ hx, or.elim hx.1 (or.elim hx.2
+        (λ H₁ H₂, false.elim $ ha $ H₁.subst H₂) $ λ h _, h) id) (λ hx, ⟨or.inr hx, or.inr hx⟩),
+    calc rk.r hX + rk.r hX = rk.r hXS + rk.r haX : by rw [hrS, hrins]
+    ... ≥ rk.r (union_subset hXS haX) + rk.r hXuSiaX : rk.submodular (union_subset hX hS) haX
+    ... = _ : by rw [hr₁, hr₂] },
+  replace h₁ := le_of_add_le_add_right h₁,
+  have h₂ : rk.r hX ≤ rk.r hXuY := rk.order_preserving (@subset_union_left _ _ X Y) hXuY,
+  exact nat.le_antisymm h₁ h₂ }
 end
 
 def indep_of_rank (r : rank E) : indep E :=
