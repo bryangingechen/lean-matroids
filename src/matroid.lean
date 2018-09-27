@@ -873,6 +873,7 @@ begin
   exact exists.elim h (by {
     intros a ha,
     have := m.indep.val,
+    sorry
   })
   },
   sorry
