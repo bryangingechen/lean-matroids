@@ -272,7 +272,7 @@ begin
   unfold indep_indep_of_circuits at *, simp at hx hy,
   by_contra h, simp at h,
   let F := (powerset $ x ∪ y).filter (λ S, (∀ c ∈ C.circuits, ¬c ⊆ S) ∧ card x < card S),
-  have hyF : y ∈ F := mem_filter.mpr ⟨mem_powerset.mpr $ (λ A B, subset_union_right) x y,
+  have hyF : y ∈ F := mem_filter.mpr ⟨mem_powerset.mpr $ subset_union_right x y,
     ⟨hy.2, hcardxy⟩⟩,
   exact exists.elim (min_fun_of_ne_empty (λ f, card (x \ f)) $ ne_empty_of_mem hyF)
     (λ z Hz, exists.elim Hz $ by { clear hcardxy Hz hyF,
