@@ -373,7 +373,7 @@ begin
   unfold indep_indep_of_circuits at *, simp at hx hy,
   by_contra h, simp at h,
   let F := (powerset $ x ∪ y).filter (λ S, (∀ c ∈ C.circuits, ¬c ⊆ S) ∧ card x < card S),
-  have hyF : y ∈ F := mem_filter.mpr ⟨mem_powerset.mpr $ (λ A B, subset_union_right) x y,
+  have hyF : y ∈ F := mem_filter.mpr ⟨mem_powerset.mpr $ subset_union_right x y,
     ⟨hy.2, hcardxy⟩⟩,
   exact exists.elim (min_fun_of_ne_empty (λ f, card (x \ f)) $ ne_empty_of_mem hyF)
     (λ z Hz, exists.elim Hz $ by { clear hcardxy Hz hyF,
@@ -941,8 +941,8 @@ def indep_of_restriction (m : indep α) (X : finset α) : finset (finset {x : α
 /-- def by Mario Carneiro https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/subject/finset.20of.20subtype.20from.20filter/near/134721936 -/
 def {u v} indep.filter_map {α : Type u} {β : Type v} [decidable_eq α] [decidable_eq β]
   [fintype α] [fintype β] (f : α → option β) (m : indep α) : indep β :=
-{ indep := m.indep.image (finset.filter_map f),
-  empty_mem_indep := finset.mem_image.2 ⟨∅, m.empty_mem_indep, rfl⟩,
+{ indep := m.indep.image (filter_map f),
+  empty_mem_indep := mem_image.2 ⟨∅, m.empty_mem_indep, rfl⟩,
   indep_of_subset_indep := λ x y, begin
     rw [mem_image, mem_image],
     rintro ⟨x, hx, rfl⟩ xy,
@@ -953,37 +953,37 @@ def {u v} indep.filter_map {α : Type u} {β : Type v} [decidable_eq α] [decida
       rcases option.some_inj.1 (hb.symm.trans hb'),
       exact hy },
     { intro hb,
-      rcases finset.mem_filter_map.1 (xy hb) with ⟨a, ha, ab⟩,
+      rcases mem_filter_map.1 (xy hb) with ⟨a, ha, ab⟩,
       exact ⟨a, ⟨ha, b, ab, hb⟩, ab⟩ }
   end,
   indep_exch := λ x y, begin
     rw [mem_image, mem_image],
     rintro ⟨x, xi, rfl⟩ ⟨y, yi, rfl⟩ xy,
-    rcases finset.exists_subset_filter_map_eq f x with ⟨z, zx, hz, cz⟩,
-    rcases finset.exists_subset_filter_map_eq f y with ⟨w, wy, hw, cw⟩,
+    rcases exists_subset_filter_map_eq f x with ⟨z, zx, hz, cz⟩,
+    rcases exists_subset_filter_map_eq f y with ⟨w, wy, hw, cw⟩,
     have zi := m.indep_of_subset_indep xi zx,
     have wi := m.indep_of_subset_indep yi wy,
     rw [hz, cz, hw, cw] at xy, rw [hz, hw], clear xi zx hz x yi wy hw y,
     induction h : card (w \ z) generalizing z,
-    { have := finset.ext.1 (card_eq_zero.1 h), simp at this,
+    { have := ext.1 (card_eq_zero.1 h), simp at this,
       exact (not_le_of_gt xy (card_le_of_subset this)).elim },
     rcases m.indep_exch zi wi xy with ⟨a, ha, ii⟩, simp at ha,
-    rcases finset.mem_of_card_filter_map cw ha.1 with ⟨b, ab⟩,
-    by_cases bz : b ∈ finset.filter_map f z,
-    { rcases finset.mem_filter_map.1 bz with ⟨a', ha', fa'⟩,
-      let z' := finset.erase (insert a z) a',
+    rcases mem_of_card_filter_map cw ha.1 with ⟨b, ab⟩,
+    by_cases bz : b ∈ filter_map f z,
+    { rcases mem_filter_map.1 bz with ⟨a', ha', fa'⟩,
+      let z' := erase (insert a z) a',
       have az' : a ∈ z',
-      { refine finset.mem_erase.2 ⟨mt _ ha.2, mem_insert_self _ _⟩,
+      { refine mem_erase.2 ⟨mt _ ha.2, mem_insert_self _ _⟩,
         rintro rfl, exact ha' },
       have inz : insert a' z' = insert a z,
-      { rw [insert_erase (finset.mem_insert_of_mem ha')] },
+      { rw [insert_erase (mem_insert_of_mem ha')] },
       have zi' : z' ∈ m.indep :=
-        m.indep_of_subset_indep ii (finset.erase_subset _ _),
-      have bz' : b ∈ finset.filter_map f z' :=
-        finset.mem_filter_map.2 ⟨a, az', ab⟩,
+        m.indep_of_subset_indep ii (erase_subset _ _),
+      have bz' : b ∈ filter_map f z' :=
+        mem_filter_map.2 ⟨a, az', ab⟩,
       have hz' : z'.filter_map f = z.filter_map f,
-      { rw [← insert_eq_of_mem bz', ← finset.filter_map_insert_some f fa',
-          inz, finset.filter_map_insert_some f ab, insert_eq_of_mem bz] },
+      { rw [← insert_eq_of_mem bz', ← filter_map_insert_some f fa',
+          inz, filter_map_insert_some f ab, insert_eq_of_mem bz] },
       have cz' : card z' = card z,
       { rw [← add_right_inj 1, ← card_insert_of_not_mem (not_mem_erase _ _),
           inz, card_insert_of_not_mem ha.2] },
@@ -995,14 +995,14 @@ def {u v} indep.filter_map {α : Type u} {β : Type v} [decidable_eq α] [decida
         { exact ha },
         { refine ⟨h₁, λ h₃, h₂ (λ h₄, _) (or.inr h₃)⟩,
           subst c,
-          rcases finset.inj_of_card_filter_map cw ha.1 h₁ ab fa',
+          rcases inj_of_card_filter_map cw ha.1 h₁ ab fa',
           exact ha.2 h₃ } },
       { rintro ⟨h₁, h₂⟩,
         refine or_iff_not_imp_left.2 (λ h₃, ⟨h₁, _⟩),
         rintro h₄ (rfl | h₅),
         { exact h₃ rfl }, { exact h₂ h₅ } } },
-    { exact ⟨b, mem_sdiff.2 ⟨finset.mem_filter_map.2 ⟨_, ha.1, ab⟩, bz⟩,
-        finset.mem_image.2 ⟨_, ii, by rw [finset.filter_map_insert_some f ab]⟩⟩ },
+    { exact ⟨b, mem_sdiff.2 ⟨mem_filter_map.2 ⟨_, ha.1, ab⟩, bz⟩,
+        mem_image.2 ⟨_, ii, by rw [filter_map_insert_some f ab]⟩⟩ },
   end }
 
 lemma mem_restriction {m : indep α} {X : finset α} {x : finset {y : α // y ∈ X}} :
@@ -1039,11 +1039,10 @@ by { intros x y hx hy hcard,
     let e' := subtype.mk e He,
     have heyx : e' ∈ y \ x := mem_sdiff.mpr ⟨finset_embed_mem.mpr he.1.1,
       λ H, he.1.2 $ finset_embed_mem.mp H⟩,
-    have heinsert : ↑(insert e' x) ∈ m.indep := by {
-      have : (↑(insert e' x) : finset α) = insert e ↑x :=
+    have heinsert : ↑(insert e' x) ∈ m.indep :=
+      by { have : (↑(insert e' x) : finset α) = insert e ↑x :=
         by simp [ext, finset_embed_coe_def, finset_embed, function.embedding.subtype],
-      exact this.symm ▸ he.2
-    },
+      exact this.symm ▸ he.2 },
     have H : insert e' x ∈ indep_of_restriction m X :=
       mem_restriction.mpr heinsert,
     exact exists.intro e' ⟨heyx, H⟩
@@ -1059,6 +1058,8 @@ notation m `\` hxe := deletion m hxe
 lemma restriction_subset_restriction (X : finset α) (m : indep α) :
   ↑(m ¦ X).indep ⊆ m.indep :=
 by { simp [restriction, subset_iff, mem_restriction],  }
+
+#exit
 
 lemma restriction_trans {X Y : finset α} (hXY : X ⊆ Y) (hY : Y ⊆ E) (m : indep E) :
   (m ¦ subset.trans hXY hY) = ((m ¦ hY) ¦ hXY) :=
