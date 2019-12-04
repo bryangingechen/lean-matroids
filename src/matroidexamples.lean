@@ -36,20 +36,25 @@ def uniform (k : ℕ) (E : finset α) : indep E :=
 ⟨(powerset E).filter (λ x, card x ≤ k),
 filter_subset (powerset E),
 mem_filter.mpr ⟨empty_mem_powerset E, (@card_empty $ finset α).symm ▸ nat.zero_le k⟩,
-by simp; exact λ x y hx hcardx hy, ⟨subset.trans hy hx, le_trans (card_le_of_subset hy) hcardx⟩,
-by simp; exact λ x y hx hcardx hy hcardy hcard, exists.elim (exists_sdiff_of_card_lt hcard) $
+by { simp only [mem_powerset, and_imp, mem_filter],
+  exact λ x y hx hcardx hy, ⟨subset.trans hy hx, le_trans (card_le_of_subset hy) hcardx⟩ },
+by { simp only [mem_powerset, and_imp, mem_filter, mem_sdiff],
+  exact λ x y hx hcardx hy hcardy hcard, exists.elim (exists_sdiff_of_card_lt hcard) $
   λ e exy, ⟨e, ⟨mem_sdiff.mp exy, ⟨insert_subset.mpr ⟨mem_of_subset hy (mem_sdiff.mp exy).1, hx⟩,
     (card_insert_of_not_mem (mem_sdiff.mp exy).2).symm ▸
-      nat.succ_le_of_lt $ nat.lt_of_lt_of_le hcard hcardy⟩⟩⟩⟩
+      nat.succ_le_of_lt $ nat.lt_of_lt_of_le hcard hcardy⟩⟩⟩ }⟩
 
 theorem loopy_eq_uniform_zero (E : finset α) : loopy E = uniform 0 E :=
 suffices (loopy E).indep = (uniform 0 E).indep, from eq_of_indep_eq this,
-by { simp [loopy, uniform, ext], intro a, rw ←eq_empty_iff_forall_not_mem,
+by { simp only [loopy, uniform, ext, mem_powerset, mem_filter, card_eq_zero, le_zero_iff_eq,
+    iff_false, insert_empty_eq_singleton, mem_singleton, not_mem_empty],
+  intro a, rw ←eq_empty_iff_forall_not_mem,
   exact ⟨λ ha, ⟨ha.symm ▸ empty_subset E, ha⟩, λ ha, ha.2⟩ }
 
 theorem free_eq_uniform_card (E : finset α) : free E = uniform (card E) E :=
 suffices (free E).indep = (uniform (card E) E).indep, from eq_of_indep_eq this,
-  by simp [free, uniform, ext]; exact λ a, ⟨λ ha, ⟨ha, card_le_of_subset ha⟩, λ ha, ha.1⟩
+  by { simp only [free, uniform, ext, mem_powerset, mem_filter, empty_mem_powerset],
+    exact λ a, ⟨λ ha, ⟨ha, card_le_of_subset ha⟩, λ ha, ha.1⟩ }
 
 #eval uniform 2 $ range 4
 
