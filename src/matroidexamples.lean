@@ -1,7 +1,7 @@
 /-
 Examples of matroids.
 -/
-import matroid data.equiv.list
+import matroid
 
 open finset
 
@@ -23,17 +23,17 @@ def loopy : of_indep E :=
 /-- the free matroid is the matroid where every subset
 of the ground set is independent; sometimes called the trivial matroid -/
 def free : of_indep E :=
-{ indep := powerset univ,
+{ indep := univ.powerset,
   empty_mem_indep := empty_mem_powerset _,
   indep_of_subset_indep := λ x y h1 h2, mem_powerset.mpr $ subset.trans h2 $ mem_powerset.mp h1,
-  indep_exch := λ x y hx hy hcard, exists.elim (exists_sdiff_of_card_lt hcard) $
+  indep_exch := λ x y hx hy hcard, exists.elim (nonempty_sdiff_of_card_lt hcard) $
     λ e exy, ⟨e, exy, mem_powerset.mpr $ insert_subset.mpr
       ⟨mem_of_subset (mem_powerset.mp hy) (mem_sdiff.mp exy).1, mem_powerset.mp hx⟩⟩ }
 
 /-- the uniform matroid U_k on `E : finset α` is the matroid whose
 independent sets are all subsets of `E` of size `k` or less; Example 1.2.7 in Oxley -/
 def uniform (k : ℕ) : of_indep E :=
-{ indep := (powerset univ).filter (λ x, card x ≤ k),
+{ indep := univ.powerset.filter (λ x, x.card ≤ k),
   empty_mem_indep := mem_filter.mpr ⟨empty_mem_powerset univ,
     (@card_empty $ finset E).symm ▸ nat.zero_le k⟩,
   indep_of_subset_indep := begin
@@ -42,7 +42,7 @@ def uniform (k : ℕ) : of_indep E :=
   end,
   indep_exch := begin
     simp only [mem_powerset, and_imp, mem_filter, mem_sdiff],
-    exact λ x y hx hcardx hy hcardy hcard, exists.elim (exists_sdiff_of_card_lt hcard) $
+    exact λ x y hx hcardx hy hcardy hcard, exists.elim (nonempty_sdiff_of_card_lt hcard) $
     λ e exy, ⟨e, ⟨mem_sdiff.mp exy, ⟨insert_subset.mpr ⟨mem_of_subset hy (mem_sdiff.mp exy).1, hx⟩,
       (card_insert_of_not_mem (mem_sdiff.mp exy).2).symm ▸
         nat.succ_le_of_lt $ nat.lt_of_lt_of_le hcard hcardy⟩⟩⟩
@@ -78,8 +78,8 @@ suffices (free E).indep = (uniform E (card univ)).indep, from eq_of_indep_eq thi
 #eval (free $ fin 5).circuits
 
 #eval uniform (fin 5) 3
-#eval (uniform (fin 5) 3).bases.indep
-#eval (uniform (fin 5) 3).circuits.indep
+#eval (uniform (fin 5) 3).to_bases.indep
+#eval (uniform (fin 5) 3).to_circuits.indep
 
 /- /- slow -/
 #eval circuit_of_dep_of_insert_indep (dec_trivial : {0,2,3} ∈ (uniform 3 $ range 5).indep)

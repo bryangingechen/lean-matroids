@@ -1,4 +1,4 @@
-import .matroid
+import matroid
 
 open finset nat
 
@@ -6,8 +6,8 @@ namespace matroid
 variables {E : Type*} [decidable_eq E] [fintype E]
 
 /-- def by Mario Carneiro https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/subject/finset.20of.20subtype.20from.20filter/near/134721936 -/
-def {u v} indep.filter_map {α : Type u} {β : Type v} [decidable_eq α] [decidable_eq β]
-  [fintype α] [fintype β] (f : α → option β) (m : indep α) : indep β :=
+def {u v} of_indep.filter_map {α : Type u} {β : Type v} [decidable_eq α] [decidable_eq β]
+  [fintype α] [fintype β] (f : α → option β) (m : of_indep α) : of_indep β :=
 { indep := m.indep.image (filter_map f),
   empty_mem_indep := mem_image.2 ⟨∅, m.empty_mem_indep, rfl⟩,
   indep_of_subset_indep := λ x y, begin
@@ -108,13 +108,13 @@ begin
     exact partial_restrict_eq y, },
 end
 
-def restriction_aug (m : indep E) (X : finset E) : indep {x : E // x ∈ X} :=
+def restriction_aug (m : of_indep E) (X : finset E) : of_indep {x : E // x ∈ X} :=
 m.filter_map $ partial_restrict
 
-lemma indep_of_restriction_aug (m : indep E) (X : finset E) (i : (finset {x : E // x ∈ X})) :
+lemma indep_of_restriction_aug (m : of_indep E) (X : finset E) (i : (finset {x : E // x ∈ X})) :
   ↑i ∈ m.indep ∧ ↑i ⊆ X → i ∈ (restriction_aug m X).indep :=
 begin
-  simp only [restriction_aug, indep.filter_map, mem_image, exists_prop],
+  simp only [restriction_aug, of_indep.filter_map, mem_image, exists_prop],
   -- conv_lhs { congr, funext,
   --   rw [subset.antisymm_iff, subset_iff, subset_iff], },
   -- split,
