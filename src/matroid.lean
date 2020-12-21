@@ -8,35 +8,17 @@ variables {α : Type*} {β : Type*} [decidable_eq α]
 namespace finset
 /- For mathlib? -/
 lemma inter_of_subset {A B : finset α} (h : A ⊆ B) : A ∩ B = A :=
-lattice.inf_of_le_left h
-
-lemma subset_iff_sdiff_eq_empty {x y : finset α} : x ⊆ y ↔ x \ y = ∅ :=
-by simp only [sdiff_eq_filter, eq_empty_iff_forall_not_mem, subset_iff, not_and,
-  not_not, finset.mem_filter]
-
-lemma empty_sdiff (E : finset α): E \ ∅ = E :=
-by simp only [ext, finset.not_mem_empty, and_true, iff_self, finset.mem_sdiff,
-  not_false_iff, forall_true_iff]
-
-lemma sdiff_subset (A B : finset α): A \ B ⊆ A :=
-(empty_sdiff A).subst $ sdiff_subset_sdiff (subset.refl A) $ empty_subset B
-
-lemma sdiff_eq_sdiff_inter (A B : finset α) : A \ B = A \ (A ∩ B) :=
-by { simp only [ext, not_and, mem_sdiff, mem_inter],
-  exact λ a, iff.intro (λ h, ⟨h.1, λ x, h.2⟩) (λ h, ⟨h.1, h.2 h.1⟩) }
+inf_of_le_left h
 
 lemma card_eq_inter_sdiff (A B : finset α) : card A = card (A ∩ B) + card (A \ B) :=
 begin
-  have hA : A \ B ∪ A ∩ B = A := by { simp only [ext, mem_union, union_comm, mem_sdiff, mem_inter],
+  have hA : A \ B ∪ A ∩ B = A := by { simp only [ext_iff, mem_union, union_comm, mem_sdiff, mem_inter],
     exact λ a, iff.intro (λ ha, or.elim ha (λ H, H.1) (λ H, H.1))
       (by { intro ha, by_cases h : a ∈ B, { exact or.inl ⟨ha, h⟩ }, { exact or.inr ⟨ha, h⟩ } }) },
   have : disjoint (A \ B) (A ∩ B) := by simp only [disjoint, empty_subset, inf_eq_inter,
     inter_empty, sdiff_inter_self, inter_left_comm, le_iff_subset],
   replace this := card_disjoint_union this, rwa [hA, add_comm] at this
 end
-
-lemma card_sdiff_eq (A B : finset α) : card (A \ B) = card A - card (A ∩ B) :=
-(nat.sub_eq_of_eq_add $ card_eq_inter_sdiff A B).symm
 
 lemma card_union_inter (A B : finset α) : card A + card B = card (A ∪ B) + card (A ∩ B) :=
 begin
@@ -57,32 +39,21 @@ suffices ∃ e ∈ y, e ∉ x, by simpa only [exists_prop, finset.mem_sdiff],
 by_contradiction $ λ H, not_le_of_lt hcard $ card_le_of_subset $ by simpa only [not_exists,
   exists_prop, not_and, not_not] using H
 
-/- proof by chris hughes
-https://leanprover.zulipchat.com/#narrow/stream/113489-new-members/subject/maximal.20finset.20in.20finset.20of.20finsets/near/133905271 -/
-lemma max_fun_of_ne_empty {F : finset β} (func : β → ℕ) (h : F ≠ ∅) :
-  ∃ x ∈ F, ∀ g ∈ F, func g ≤ func x :=
-let ⟨n, hn⟩ := (max_of_ne_empty (mt image_eq_empty.1 h) : ∃ a, a ∈ finset.max (F.image func)) in
-let ⟨x, hx₁, hx₂⟩ := mem_image.1 (mem_of_max hn) in
-  ⟨x, hx₁, hx₂.symm ▸ λ g hg, le_max_of_mem (mem_image.2 ⟨g, hg, rfl⟩) hn⟩
+lemma subset_iff_sdiff_eq_empty {x y : finset α} : x ⊆ y ↔ x \ y = ∅ :=
+by simp only [sdiff_eq_filter, eq_empty_iff_forall_not_mem, subset_iff, not_and,
+  not_not, finset.mem_filter]
 
-lemma min_fun_of_ne_empty {F : finset β} (func : β → ℕ) (h : F ≠ ∅) :
-  ∃ x ∈ F, ∀ g ∈ F, func x ≤ func g :=
-let ⟨n, hn⟩ := (min_of_ne_empty $ mt image_eq_empty.1 h : ∃ a, a ∈ finset.min (F.image func)) in
-let ⟨x, hx₁, hx₂⟩ := mem_image.1 (mem_of_min hn) in
-  ⟨x, hx₁, hx₂.symm ▸ λ g hg, min_le_of_mem (mem_image.2 ⟨g, hg, rfl⟩) hn⟩
+lemma not_nonempty_iff_forall_not_mem {s : finset α} : ¬ s.nonempty ↔ ∀ x, x ∉ s :=
+by simp only [nonempty_iff_ne_empty, not_not, eq_empty_iff_forall_not_mem, not_exists]
 
-section inst
+lemma subset_iff_sdiff_not_nonempty {x y : finset α} : x ⊆ y ↔ ¬(x \ y).nonempty :=
+by simp only [nonempty_iff_ne_empty, subset_iff_sdiff_eq_empty, not_not]
 
-variables {F : finset α} {Q : finset α → Prop} [decidable_pred Q] {P : α → Prop} [decidable_pred P]
-
-instance decidable_not_forall (c₁ : finset (finset α)) :
-  decidable (∃ x : finset α, ¬(x ∈ c₁ → ¬Q x)) :=
-decidable_of_iff (∃ x ∈ c₁, Q x) $ by simp only [exists_prop, not_forall_not]
-
-instance decidable_exists_and_mem : decidable (∃ e, e ∈ F ∧ P e) :=
-decidable_of_iff (∃ e ∈ F, P e) $ by simp only [exists_prop, not_forall_not]
-
-end inst
+theorem nonempty_of_mem {a : α} {s : finset α} (h : a ∈ s) : s.nonempty :=
+begin
+  rw nonempty_iff_ne_empty,
+  exact λ e, not_mem_empty a $ e ▸ h,
+end
 
 end finset
 
@@ -149,7 +120,7 @@ end
 
 theorem dep_iff_circuit_subset {x : finset α} (m : indep E) :
   x ⊆ E → (x ∉ m.indep ↔ ∃ y ⊆ x, is_circuit y m) :=
-λ hxE, iff.intro (λ hxd, exists.elim (min_fun_of_ne_empty card (ne_empty_of_mem $
+λ hxE, iff.intro (λ hxd, exists.elim (exists_min_image _ card (nonempty_of_mem $
     mem_filter.mpr ⟨mem_powerset.mpr $ subset.refl x, hxd⟩)) $
   λ a ha, exists.elim ha $
     λ ha2 hamin, exists.intro a $ have hax : a ⊆ x := mem_powerset.mp (mem_filter.mp ha2).1,
@@ -165,8 +136,8 @@ theorem dep_iff_circuit_subset {x : finset α} (m : indep E) :
 lemma C3_of_indep (m : indep E) (x y : finset α) (e : α) (hx : x ∈ circuits_circ_of_indep m)
   (hy : y ∈ circuits_circ_of_indep m) (hxny : x ≠ y) (he : e ∈ x ∩ y) :
   ∃ z, z ∈ circuits_circ_of_indep m ∧ z ⊆ erase (x ∪ y) e :=
-have hxmy : x \ y ≠ ∅ := mt subset_iff_sdiff_eq_empty.mpr $ mt (C2_of_indep m x y hx hy) hxny,
-  exists.elim (exists_mem_of_ne_empty hxmy) $
+have hxmy : (x \ y).nonempty := not_not.mp $ mt subset_iff_sdiff_not_nonempty.mpr $ mt (C2_of_indep m x y hx hy) hxny,
+  exists.elim hxmy.bex $
     by { clear hxny hxmy,
     intros a ha, simp only [circuits_circ_of_indep, mem_powerset, mem_filter, mem_sdiff, mem_inter]
       at ha hx hy he,
@@ -175,7 +146,7 @@ have hxmy : x \ y ≠ ∅ := mt subset_iff_sdiff_eq_empty.mpr $ mt (C2_of_indep 
     let F := (powerset (x ∪ y)).filter (λ S, erase x a ⊆ S ∧ S ∈ m.indep),
     have hxaF : erase x a ∈ F := mem_filter.2 ⟨mem_powerset.mpr $ subset.trans (erase_subset a x) $
       @subset_union_left _ _ x y, ⟨subset.refl _, hxai⟩⟩, clear hxai,
-    exact exists.elim (max_fun_of_ne_empty card $ ne_empty_of_mem hxaF)
+    exact exists.elim (exists_max_image _ card $ nonempty_of_mem hxaF)
       (λ I hEI2, exists.elim hEI2 $ by { clear hxaF hEI2,
         exact λ hIF hI,
           have hIFindep : I ∈ m.indep := (mem_filter.mp hIF).2.2,
@@ -192,7 +163,7 @@ have hxmy : x \ y ≠ ∅ := mt subset_iff_sdiff_eq_empty.mpr $ mt (C2_of_indep 
               at hIdep2,
             have hyI0 := mt (hIdep2 hIFindep y), simp only [not_not] at hyI0,
             have hYI : ¬y ⊆ I := hyI0 hy.2,
-            have this := exists_mem_of_ne_empty (mt subset_iff_sdiff_eq_empty.mpr hYI),
+            have this := (not_not.mp $ mt subset_iff_sdiff_not_nonempty.mpr hYI).bex,
             simp only [mem_sdiff] at this, simpa only [exists_prop] },
           exists.elim hEg $ λ g hEg2, exists.elim hEg2 $ by { clear hEg hEg2 hIdep,
             intros hgy hgnI,
@@ -204,7 +175,7 @@ have hxmy : x \ y ≠ ∅ := mt subset_iff_sdiff_eq_empty.mpr $ mt (C2_of_indep 
             have hcardxye : card (erase (x ∪ y) a) = nat.pred (card (x ∪ y)) :=
               card_erase_of_mem haxuy,
             have hpcard : nat.pred (card (x ∪ y)) > 0 := by { rw ←hcardxye,
-              exact card_pos.mpr (ne_empty_of_mem $ mem_erase.mpr ⟨hga, mem_union_right x hgy⟩) },
+              exact card_pos.mpr (nonempty_of_mem $ mem_erase.mpr ⟨hga, mem_union_right x hgy⟩) },
             have hcard : card I < card (erase (x ∪ y) e) :=
               calc card I ≤ card (erase (erase (x ∪ y) a) g) : card_le_of_subset hIag
               ... = nat.pred (nat.pred (card (x ∪ y))) : by rw [card_erase_of_mem
@@ -253,7 +224,7 @@ by simpa only []
 
 def circuits_of_indep (m : indep E) : circuits E :=
 { circuits := circuits_circ_of_indep m,
-  circuits_subset_powerset_ground := filter_subset _,
+  circuits_subset_powerset_ground := filter_subset _ _,
   empty_not_mem_circuits :=
     begin
       simp only [circuits_circ_of_indep, is_circuit, mem_filter, not_and],
@@ -286,16 +257,16 @@ begin
   let F := (powerset $ x ∪ y).filter (λ S, (∀ c ∈ C.circuits, ¬c ⊆ S) ∧ card x < card S),
   have hyF : y ∈ F := mem_filter.mpr ⟨mem_powerset.mpr $ subset_union_right x y,
     ⟨hy.2, hcardxy⟩⟩,
-  exact exists.elim (min_fun_of_ne_empty (λ f, card (x \ f)) $ ne_empty_of_mem hyF)
+  exact exists.elim (exists_min_image _ (λ f, card (x \ f)) $ nonempty_of_mem hyF)
     (λ z Hz, exists.elim Hz $ by { clear hcardxy Hz hyF,
       intros hz hminz,
       have hzxuy : z ⊆ x ∪ y := mem_powerset.mp (mem_filter.mp hz).1,
       replace hz := (mem_filter.mp hz).2,
       exact exists.elim (exists_sdiff_of_card_lt hz.2)
         (by { intros a ha, rw mem_sdiff at ha,
-        have hxsdiffz : x \ z ≠ ∅ :=
-          by { intro H,
-          have Hxsubz : x ⊆ z := subset_iff_sdiff_eq_empty.mpr H,
+        have hxsdiffz : (x \ z).nonempty :=
+          by { by_contradiction H,
+          have Hxsubz : x ⊆ z := subset_iff_sdiff_not_nonempty.mpr H,
           have hay : a ∈ y := or.elim (mem_union.mp $ mem_of_subset hzxuy ha.1)
             (λ Hax, false.elim $ ha.2 Hax) id,
           have haindep : insert a x ∈ indep_indep_of_circuits C := I2_of_circuits C z (insert a x)
@@ -304,7 +275,7 @@ begin
             (insert_subset.mpr ⟨ha.1, Hxsubz⟩),
           simp only [indep_indep_of_circuits, mem_powerset, mem_filter] at haindep,
           exact h a hay ha.2 haindep.1 haindep.2 },
-        exact exists.elim (exists_mem_of_ne_empty hxsdiffz)
+        exact exists.elim hxsdiffz.bex
           (by { clear h ha hxsdiffz,
           intros e he, rw mem_sdiff at he,
           let T : α → finset α := λ f, erase (insert e z) f,
@@ -355,7 +326,7 @@ begin
                 intros HCg1 HCg2,
                 have hCgsub : Cg ⊆ insert e z := subset.trans HCg2 (erase_subset g $ insert e z),
                 rw [subset_iff] at HCg2,
-                have HCgzx : Cg ∩ (z \ x) ≠ ∅ :=
+                have HCgzx : (Cg ∩ (z \ x)).nonempty :=
                   λ H, suffices Cg ⊆ x, from hx.2 Cg HCg1 this,
                     suffices H1 : Cg ⊆ erase (insert e (x ∩ z)) g, from
                     suffices H2 : erase (insert e (x ∩ z)) g ⊆ x, from
@@ -372,12 +343,12 @@ begin
                       simp only [mem_insert, mem_erase, mem_inter] at HCg2 ⊢,
                       split,
                         { exact HCg2.1 },
-                        { rw eq_empty_iff_forall_not_mem at H,
-                        replace H : gg ∉ Cg ∩ (z \ x) := H gg,
+                        { rw not_nonempty_iff_forall_not_mem at H,
+                        replace H : gg ∉ Cg ∩ (z \ x) := nonempty_of_ne_empty H gg,
                         simp only [not_and, mem_sdiff, not_not, mem_inter] at H,
                       exact or.elim HCg2.2 (λ gge, or.inl gge) (λ ggz, or.inr ⟨H hgg ggz, ggz⟩) } },
                 clear HCg2,
-                exact exists.elim (exists_mem_of_ne_empty HCgzx)
+                exact exists.elim HCgzx.bex
                   (by { intros h0 hh0, rw [mem_inter] at hh0,
                   exact exists.elim (hTfC h0 hh0.2)
                     (λ Ch0 HCh0, exists.elim HCh0 $ λ hCh0circ hCh0T,
@@ -428,7 +399,7 @@ instance indep_circ : has_coe (indep E) (circuits E) := ⟨circuits_of_indep⟩
 theorem circ_indep_circ : ∀ C : circuits E, C = circuits_of_indep (indep_of_circuits C)
   | ⟨c₁, p₁, q₁, r₁, s₁⟩ :=
 by { simp only [indep_of_circuits, circuits_of_indep, indep_indep_of_circuits,
-  circuits_circ_of_indep, is_circuit, ext, mem_filter, mem_powerset, and_imp, not_and],
+  circuits_circ_of_indep, is_circuit, ext_iff, mem_filter, mem_powerset, and_imp, not_and],
 exact λ c, iff.intro
   (λ hc : c ∈ c₁, have ce : c ⊆ E := mem_powerset.mp (mem_of_subset p₁ hc),
   ⟨ce, ⟨λ _ H, (H c hc) $ subset.refl c, λ f hf,
@@ -447,7 +418,7 @@ theorem indep_circ_indep (M : indep E) : M = indep_of_circuits (circuits_of_inde
 suffices M.indep = (indep_of_circuits $ circuits_of_indep M).indep, from eq_of_indep_eq this,
 begin
   simp only [circuits_of_indep, indep_of_circuits, circuits_circ_of_indep, indep_indep_of_circuits,
-    ext, mem_powerset, and_imp, mem_filter],
+    ext_iff, mem_powerset, and_imp, mem_filter],
   intro I,
   have hI : I ∈ M.indep → I ⊆ E := λ H, mem_powerset.mp $
     mem_of_subset (M.indep_subset_powerset_ground) H,
@@ -541,7 +512,7 @@ theorem exists_basis_containing_indep {I : finset α} {m : indep E} (h : I ∈ m
   ∃ B : finset α, I ⊆ B ∧ is_basis B m :=
 let F := (m.indep).filter (λ a, I ⊆ a) in
 have FI : I ∈ F := mem_filter.mpr ⟨h, subset.refl I⟩,
-exists.elim (max_fun_of_ne_empty card $ ne_empty_of_mem FI) $
+exists.elim (exists_max_image F card $ nonempty_of_mem FI) $
   λ B HB, exists.elim HB $ by { clear HB, intros HBF Hg, rw mem_filter at HBF,
     have hBB : is_basis B m := ⟨HBF.1, λ y hy hBy hyI,
       have hxsy : I ⊆ y := le_of_lt $ lt_of_le_of_lt (le_iff_subset.mpr HBF.2) $
@@ -577,7 +548,7 @@ structure bases (E : finset α) :=
 (bases : finset (finset α))
 (bases_subset_powerset_ground : bases ⊆ powerset E)
 -- (B1)
-(bases_not_empty : bases ≠ ∅)
+(bases_not_empty : bases.nonempty)
 -- (B2)
 (basis_exch {x y e} (hx : x ∈ bases) (hy : y ∈ bases) (he : e ∈ x \ y)
     : ∃ a, a ∈ y \ x ∧ insert a (erase x e) ∈ bases)
@@ -593,10 +564,10 @@ by simpa only []
 def bases_bases_of_indep (m : indep E) : finset (finset α) :=
 (powerset E).filter (λ S, is_basis S m)
 
-lemma B1_of_indep (m : indep E) : bases_bases_of_indep m ≠ ∅ :=
-by { simp only [is_basis, bases_bases_of_indep, ext, ne.def, mem_filter, mem_powerset,
+lemma B1_of_indep (m : indep E) : (bases_bases_of_indep m).nonempty :=
+by { simp only [is_basis, bases_bases_of_indep, ext_iff, ne.def, mem_filter, mem_powerset,
     not_mem_empty, not_and, iff_false],
-  exact λ h, exists.elim (max_fun_of_ne_empty card $ ne_empty_of_mem m.empty_mem_indep)
+  exact λ h, exists.elim (exists_max_image _ card $ nonempty_of_mem m.empty_mem_indep)
   (λ a ha, exists.elim ha $ λ ha1 hg, (h a (mem_powerset.mp $
     mem_of_subset m.indep_subset_powerset_ground ha1)
   ha1) $ λ F _ Fcontainsa Findep, not_le_of_lt (card_lt_card Fcontainsa) $ hg F Findep) }
@@ -618,7 +589,7 @@ exact λ x y e hxE hxI hx hyE hyI hy hex hey,
       have ha1 := mem_sdiff.mp ha.1,
       have hae : a ≠ e := λ hae, hey $ hae ▸ ha1.1,
       have hax : a ∉ x := by { simp only [not_and, mem_erase, ne.def] at ha1, exact ha1.2 hae },
-      have hcx : card x > 0 := card_pos.mpr (ne_empty_of_mem hex),
+      have hcx : card x > 0 := card_pos.mpr (nonempty_of_mem hex),
       have hayycard : card (insert a $ erase x e) = card x := calc
         card (insert a $ erase x e) = nat.pred (card x) + 1 : by rw [card_insert_of_not_mem ha1.2,
             card_erase_of_mem hex]
@@ -629,7 +600,7 @@ exact λ x y e hxE hxI hx hyE hyI hy hex hey,
 
 def bases_of_indep (m : indep E) : bases E :=
 ⟨bases_bases_of_indep m,
-filter_subset _,
+filter_subset _ _,
 B1_of_indep m,
 B2_of_indep m⟩
 
@@ -643,8 +614,8 @@ begin
   let F : finset (finset α × finset α) := (finset.product b.bases b.bases).filter
     (λ e : finset α × finset α, card e.1 < card e.2),
   have hyx : (y, x) ∈ F := mem_filter.mpr ⟨mem_product.mpr ⟨hy, hx⟩, h⟩, clear hy hx,
-  exact exists.elim (min_fun_of_ne_empty (λ f : finset α × finset α, card (f.2 \ f.1)) $
-      ne_empty_of_mem hyx)
+  exact exists.elim (exists_min_image _ (λ f : finset α × finset α, card (f.2 \ f.1)) $
+      nonempty_of_mem hyx)
     (λ a ha, exists.elim ha $ by { clear hyx ha,
       intros haF Ha, replace haF := mem_filter.mp haF,
       have hab : a.1 ∈ b.bases ∧ a.2 ∈ b.bases := mem_product.mp haF.1,
@@ -654,7 +625,7 @@ begin
           let a2 : finset α := insert aa (erase a.2 e),
           have haani : aa ∉ erase a.2 e := λ h, haa1.2 (mem_erase.mp h).2,
           have hea2 : e ∈ a.2 := (mem_sdiff.mp he).1,
-          have hpos : 0 < card a.2 := card_pos.mpr (ne_empty_of_mem hea2),
+          have hpos : 0 < card a.2 := card_pos.mpr (nonempty_of_mem hea2),
           have hcarda2 : card a.1 < card a2 := by { rw [card_insert_of_not_mem haani,
             card_erase_of_mem hea2, ←nat.succ_eq_add_one, nat.succ_pred_eq_of_pos hpos],
             exact haF.2 }, clear haani hpos,
@@ -680,8 +651,8 @@ def indep_indep_of_bases (b : bases E) : finset (finset α) :=
 /-- first part of Theorem 1.2.3 -/
 def indep_of_bases (b : bases E) : indep E :=
 ⟨indep_indep_of_bases b,
-filter_subset _,
-mem_filter.mpr ⟨empty_mem_powerset E, exists.elim (exists_mem_of_ne_empty b.bases_not_empty) $
+filter_subset _ _,
+mem_filter.mpr ⟨empty_mem_powerset E, exists.elim b.bases_not_empty.bex $
     λ a ha, exists.intro a $ exists.intro ha $ empty_subset a⟩,
 begin
   intros x y hx hxy, simp only [indep_indep_of_bases, mem_powerset, filter_congr_decidable,
@@ -695,15 +666,15 @@ begin
   by_contra h, simp only [mem_powerset, not_exists, and_imp, filter_congr_decidable,
     exists_prop, mem_filter, not_and, mem_sdiff] at hx hy h,
   exact exists.elim hx.2 (λ b1 hb1, exists.elim hy.2 $ λ b2 hb2, exists.elim
-    (min_fun_of_ne_empty (λ f, card (f \ (y ∪ b1))) $ ne_empty_of_mem $ mem_filter.mpr hb2) $
+    (exists_min_image _ (λ f, card (f \ (y ∪ b1))) $ nonempty_of_mem $ mem_filter.mpr hb2) $
     λ B2 hEB2, exists.elim hEB2 $ by { clear hb2 b2 hEB2,
       intros hB2filt hB2min, replace hB2filt : B2 ∈ b.bases ∧ y ⊆ B2 := mem_filter.mp hB2filt,
-      have hysdiff : y \ b1 = y \ x := by { simp only [ext, mem_sdiff],
+      have hysdiff : y \ b1 = y \ x := by { simp only [ext_iff, mem_sdiff],
         exact λ gg, ⟨λ hgg, ⟨hgg.1, λ hggnx, hgg.2 $ mem_of_subset hb1.2 hggnx⟩,
           λ hgg, ⟨hgg.1, λ ggb1, h gg hgg.1 hgg.2 (insert_subset.mpr
           ⟨mem_of_subset hy.1 hgg.1, hx.1⟩) b1 hb1.1 $ insert_subset.mpr ⟨ggb1, hb1.2⟩⟩⟩ },
       have hB2yub1: B2 \ (y ∪ b1) = ∅ := by { by_contra H,
-        exact exists.elim (exists_mem_of_ne_empty H) (by { clear H,
+        exact exists.elim (nonempty_of_ne_empty H) (by { clear H,
           intros X hX, simp only [not_or_distrib, mem_union, mem_sdiff] at hX,
           have hXB2b1 : X ∈ B2 \ b1 := by { rw mem_sdiff, exact ⟨hX.1, hX.2.2⟩ },
           exact exists.elim (b.basis_exch hB2filt.1 hb1.1 hXB2b1)
@@ -730,7 +701,7 @@ begin
             λ hgg, ⟨mem_of_subset hB2filt.2 hgg.1, hgg.2⟩⟩ },
       rw [hysdiff] at hB2b1y, clear hysdiff,
       have hb1xuB2 : b1 \ (x ∪ B2) = ∅ := by { by_contra H,
-        exact exists.elim (exists_mem_of_ne_empty H)
+        exact exists.elim H.bex,
           (by { intros X hX, simp only [not_or_distrib, mem_union, mem_sdiff] at hX,
           exact exists.elim (b.basis_exch hb1.1 hB2filt.1 $ mem_sdiff.mpr ⟨hX.1, hX.2.2⟩)
             (by { intros Y hY, rw mem_sdiff at hY,
@@ -770,7 +741,7 @@ instance indep_base : has_coe (indep E) (bases E) := ⟨bases_of_indep⟩
 theorem base_indep_base (B : bases E) : B = bases_of_indep (indep_of_bases B) :=
 suffices B.bases = (bases_of_indep $ indep_of_bases B).bases, from eq_of_base_eq this,
 by { simp only [indep_of_bases, bases_of_indep, indep_indep_of_bases, is_basis,
-  ext, bases_bases_of_indep, mem_filter, mem_powerset, not_and, not_exists, exists_prop],
+  ext_iff, bases_bases_of_indep, mem_filter, mem_powerset, not_and, not_exists, exists_prop],
 exact λ b, iff.intro
   (λ hb, have hB : b ⊆ E := mem_powerset.mp (mem_of_subset B.bases_subset_powerset_ground hb),
     ⟨hB, ⟨⟨hB, exists.intro b ⟨hb, subset.refl b⟩⟩, λ b' _ hbb' _ _ hx H,
@@ -784,7 +755,7 @@ exact λ b, iff.intro
 theorem indep_base_indep (M : indep E) : M = indep_of_bases (bases_of_indep M) :=
 suffices M.indep = (indep_of_bases $ bases_of_indep M).indep, from eq_of_indep_eq this,
 by { simp only [indep_of_bases, bases_of_indep, indep_indep_of_bases, is_basis,
-  ext, bases_bases_of_indep, mem_filter, mem_powerset, exists_prop],
+  ext_iff, bases_bases_of_indep, mem_filter, mem_powerset, exists_prop],
   exact λ I, iff.intro (λ hI, ⟨mem_powerset.mp $ mem_of_subset M.indep_subset_powerset_ground hI,
   exists.elim (exists_basis_containing_indep hI) $ λ B hB, by { unfold is_basis at hB,
     exact exists.intro B ⟨⟨mem_powerset.1 $ mem_of_subset M.indep_subset_powerset_ground hB.2.1,
@@ -850,7 +821,7 @@ by { simp only [restriction, indep_of_restriction, subset_iff, and_imp,
 
 lemma restriction_trans {X Y : finset α} (hXY : X ⊆ Y) (hY : Y ⊆ E) (m : indep E) :
   (m ¦ subset.trans hXY hY) = ((m ¦ hY) ¦ hXY) :=
-by { simp only [restriction, indep_of_restriction, ext, mem_filter],
+by { simp only [restriction, indep_of_restriction, ext_iff, mem_filter],
   exact λ I, iff.intro (λ h, ⟨⟨h.1, subset.trans h.2 hXY⟩, h.2⟩) $ λ h, ⟨h.1.1, h.2⟩ }
 
 lemma subset_restriction_indep {X Y : finset α} {m : indep E} (hX : X ∈ m.indep) (hXY : X ⊆ Y)
@@ -862,7 +833,7 @@ X ∈ bases_bases_of_indep (m ¦ hY)-/
 
 lemma exists_basis_of_subset {X : finset α} (hXE : X ⊆ E) (m : indep E) :
   ∃ B, B ∈ bases_bases_of_indep (m ¦ hXE) :=
-exists_mem_of_ne_empty $ B1_of_indep (m ¦ hXE)
+(B1_of_indep (m ¦ hXE)).bex
 
 /-lemma inter_of_span_of_subset_span {m : indep E} {X Y bX bY : finset α} {hXE : X ⊆ E}
   (hbX : spans bX hXE m) {hYE : Y ⊆ E} (hbY : spans bY hYE m) (hbXbY : bX ⊆ bY) : bY ∩ X = bX :=
@@ -940,7 +911,7 @@ begin
     have hBXiY : B ∩ X ∩ Y = bXiY :=
       by { have hsub : B ∩ X ∩ Y ⊆ bXiY :=
         by { by_contra h,
-        exact exists.elim (exists_mem_of_ne_empty $ (mt subset_iff_sdiff_eq_empty.mpr) h)
+        exact exists.elim (not_not.mp $ mt subset_iff_sdiff_not_nonempty.mpr h).bex
           (by { intros a ha, rw [mem_sdiff, inter_assoc, mem_inter] at ha, unfold is_basis at bXiYs,
           have := ssubset_insert ha.2,
           have hbXiYsubXiY : insert a bXiY ⊆ X ∩ Y:= insert_subset.mpr ⟨ha.1.2, bXiYs.1⟩,
@@ -1018,15 +989,15 @@ begin
     have hrins : rk.r haX = rk.r hX := hy a haa, rw mem_sdiff at haa,
     have hrS : rk.r hXS = rk.r hX := by {
       exact ih hX hS (by { intros y Hy, have : y ∈ Y \ X := by { rw mem_sdiff at Hy,
-        simp only [ext, mem_insert, mem_sdiff] at h,
+        simp only [ext_iff, mem_insert, mem_sdiff] at h,
         exact mem_sdiff.mpr ((h y).mpr $ or.inr Hy.1) }, exact hy y this })
-        hXS (by { simp only [ext, mem_insert, mem_sdiff] at h ⊢,
+        hXS (by { simp only [ext_iff, mem_insert, mem_sdiff] at h ⊢,
           exact λ y, iff.intro (λ Hy, Hy.1) $ λ Hy, ⟨Hy, ((h y).mpr $ or.inr Hy).2⟩ }) },
     have hXuSiaX : (X ∪ S) ∩ insert a X ⊆ E := (subset.trans (@inter_subset_right _ _ (X ∪ S)
       (insert a X)) haX),
     have hr₁ : rk.r (union_subset hXS haX) = rk.r hXuY :=
       by { exact congr_for_rank rk (union_subset hXS haX) hXuY (by {
-        simp only [ext, mem_union, union_comm, mem_insert, mem_sdiff, union_insert,
+        simp only [ext_iff, mem_union, union_comm, mem_insert, mem_sdiff, union_insert,
           union_self, union_assoc] at h ⊢,
       exact λ x, iff.intro (λ hx, or.elim hx (λ hxa, or.inr $ hxa.substr haa.1) $
         λ H, or.elim H (by { intro hxS, exact or.inr ((h x).mpr $ or.inr hxS).1}) $
@@ -1037,7 +1008,7 @@ begin
             { exact or.elim ((h x).mp ⟨hxY, hxX⟩) (λ H, or.inl H)
               (λ HS, or.inr $ or.inl HS) } } }) },
     have hr₂ : rk.r hXuSiaX = rk.r hX := by { congr,
-      simp only [ext, mem_union, union_comm, mem_insert, mem_inter],
+      simp only [ext_iff, mem_union, union_comm, mem_insert, mem_inter],
       exact λ x, iff.intro (λ hx, or.elim hx.1 (or.elim hx.2
         (λ H₁ H₂, false.elim $ ha $ H₁.subst H₂) $ λ h _, h) id) (λ hx, ⟨or.inr hx, or.inr hx⟩) },
     calc rk.r hX + rk.r hX = rk.r hXS + rk.r haX : by rw [hrS, hrins]

@@ -34,7 +34,7 @@ empty_mem_powerset _,
 independent sets are all subsets of `E` of size `k` or less; Example 1.2.7 in Oxley -/
 def uniform (k : ℕ) (E : finset α) : indep E :=
 ⟨(powerset E).filter (λ x, card x ≤ k),
-filter_subset (powerset E),
+filter_subset _ (powerset E),
 mem_filter.mpr ⟨empty_mem_powerset E, (@card_empty $ finset α).symm ▸ nat.zero_le k⟩,
 by { simp only [mem_powerset, and_imp, mem_filter],
   exact λ x y hx hcardx hy, ⟨subset.trans hy hx, le_trans (card_le_of_subset hy) hcardx⟩ },
@@ -46,14 +46,14 @@ by { simp only [mem_powerset, and_imp, mem_filter, mem_sdiff],
 
 theorem loopy_eq_uniform_zero (E : finset α) : loopy E = uniform 0 E :=
 suffices (loopy E).indep = (uniform 0 E).indep, from eq_of_indep_eq this,
-by { simp only [loopy, uniform, ext, mem_powerset, mem_filter, card_eq_zero, le_zero_iff_eq,
-    iff_false, insert_empty_eq_singleton, mem_singleton, not_mem_empty],
+by { simp only [loopy, uniform, ext_iff, mem_powerset, mem_filter, card_eq_zero, le_zero_iff_eq,
+    iff_false, mem_singleton, not_mem_empty],
   intro a, rw ←eq_empty_iff_forall_not_mem,
   exact ⟨λ ha, ⟨ha.symm ▸ empty_subset E, ha⟩, λ ha, ha.2⟩ }
 
 theorem free_eq_uniform_card (E : finset α) : free E = uniform (card E) E :=
 suffices (free E).indep = (uniform (card E) E).indep, from eq_of_indep_eq this,
-  by { simp only [free, uniform, ext, mem_powerset, mem_filter, empty_mem_powerset],
+  by { simp only [free, uniform, ext_iff, mem_powerset, mem_filter, empty_mem_powerset],
     exact λ a, ⟨λ ha, ⟨ha, card_le_of_subset ha⟩, λ ha, ha.1⟩ }
 
 #eval uniform 2 $ range 4
